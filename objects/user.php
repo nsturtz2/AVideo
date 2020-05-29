@@ -245,14 +245,25 @@ if (typeof gtag !== \"function\") {
         }
     }
     
-    static private function _recommendChannelName($name=""){
+    static function _recommendChannelName($name="", $try = 0){
+        if($try>10){
+            _error_log("User:_recommendChannelName too many tries ", AVideoLog::$ERROR);
+            die("Too many tries");
+        }
         if(empty($name)){
             $name = self::getNameIdentification();
             $name = cleanString($name);
         }
-        $user = self::getUserFromChannelName($channelName);
-        if($user && $user['id']!== User::getId()){
-            return self::_recommendChannelName($name. "_".uniqid());
+        // in case is a email get only the username
+        $parts = explode("@", $name);
+        $name = $parts[0];
+        // do not exceed 36 chars to leave some room for the unique id;
+        $name = substr($name, 0, 36);
+        if(!User::isAdmin()){
+            $user = self::getUserFromChannelName($name);
+            if($user && $user['id']!== User::getId()){
+                return self::_recommendChannelName($name. "_".uniqid(), $try+1);
+            }
         }
         return $name;
     }
@@ -465,17 +476,15 @@ if (typeof gtag !== \"function\") {
         }
         if (empty($this->emailVerified))
             $this->emailVerified = "false";
-        
-        $this->channelName = self::_recommendChannelName($this->channelName);
-        
+                
         $this->user = $global['mysqli']->real_escape_string($this->user);
         $this->password = $global['mysqli']->real_escape_string($this->password);
         $this->name = $global['mysqli']->real_escape_string($this->name);
         $this->status = $global['mysqli']->real_escape_string($this->status);
         $this->about = $global['mysqli']->real_escape_string($this->about);
         $this->about = preg_replace("/(\\\)+n/", "\n", $this->about);
-        $this->channelName = $global['mysqli']->real_escape_string($this->channelName);
         $this->channelName = self::_recommendChannelName($this->channelName);
+        $this->channelName = $global['mysqli']->real_escape_string($this->channelName);
         if (filter_var($this->donationLink, FILTER_VALIDATE_URL) === FALSE) {
             $this->donationLink = "";
         }

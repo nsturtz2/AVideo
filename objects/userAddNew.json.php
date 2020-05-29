@@ -8,9 +8,17 @@ require_once $global['systemRootPath'] . 'objects/user.php';
 if (!User::isAdmin()) {
     die('{"error":"'.__("Permission denied").'"}');
 }
+session_write_close();
 if(!empty($advancedCustomUser->forceLoginToBeTheEmail)){
     $_POST['email'] = $_POST['user'];
 }
+
+if(empty($_POST['id'])){
+    _error_log("userAddNew.json.php: Adding a user");
+}else{
+    _error_log("userAddNew.json.php: Editing a user id = {$_POST['id']}");
+}
+
 
 $user = new User(@$_POST['id']);
 $user->setUser($_POST['user']);
@@ -24,6 +32,9 @@ $user->setCanViewChart($_POST['canViewChart']);
 $user->setStatus($_POST['status']);
 $user->setEmailVerified($_POST['isEmailVerified']);
 $user->setAnalyticsCode($_POST['analyticsCode']);
+
+_error_log("userAddNew.json.php: set channel name = ({$_POST['channelName']})");
+
 $unique = $user->setChannelName($_POST['channelName']);
 
 //identify what variables come from external plugins
@@ -43,8 +54,13 @@ if(is_array($userOptions))
 
 
 if(!empty($_POST['channelName']) && !$unique){
-    echo '{"error":"'.__("Channel name already exists").'"}';
-    exit;
+    _error_log("userAddNew.json.php: channel name already exits = ({$_POST['channelName']})");
+    $user->setChannelName(User::_recommendChannelName($_POST['channelName']));
+    _error_log("userAddNew.json.php: new channel name: ".$user->getChannelName());
 }
 $user->setUserGroups(@$_POST['userGroups']);
-echo '{"status":"'.$user->save(true).'"}';
+
+_error_log("userAddNew.json.php: saving");
+$users_id = $user->save(true);
+echo '{"status":"'.$users_id.'"}';
+_error_log("userAddNew.json.php: saved users_id ($users_id)");
